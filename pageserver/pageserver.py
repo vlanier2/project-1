@@ -6,11 +6,12 @@
   error handling and many other things to keep the illustration as simple
   as possible.
 
-  FIXME:
-  Currently this program always serves an ascii graphic of a cat.
-  Change it to serve files if they end with .html or .css, and are
-  located in ./pages  (where '.' is the directory from which this
-  program is run).
+  This program starts a webserver on a port specified in credentials.ini.
+  The server looks for files specified by DOCROOT also in credentials.ini.
+  Currently, the server only responds to GET requests for files in DOCROOT.
+  Error 404 is transmitted when the requested file is not found in DOCROOT. 
+  Error 403 is transmitted when illegal characters are found in the request.
+  Error 401 is transmitted for any requests other than GET.
 """
 
 import config    # Configure from .ini files and command line
@@ -19,7 +20,7 @@ logging.basicConfig(format='%(levelname)s:%(message)s',
                     level=logging.INFO)
 log = logging.getLogger(__name__)
 # Logging level may be overridden by configuration 
-
+import os
 import socket    # Basic TCP/IP communication on the internet
 import _thread   # Response computation runs concurrently with main program
 
@@ -81,7 +82,7 @@ STATUS_NOT_IMPLEMENTED = "HTTP/1.0 401 Not Implemented\n\n"
 def respond(sock):
     """
     This server responds only to GET requests (not PUT, POST, or UPDATE).
-    Any valid GET request is answered with an ascii graphic of a cat.
+    Any valid GET request is answered with the requested file in DOCROOT.
     """
     sent = 0
     request = sock.recv(1024)  # We accept only short requests
@@ -90,13 +91,27 @@ def respond(sock):
     log.info("Request was {}\n***\n".format(request))
 
     parts = request.split()
-    if len(parts) > 1 and parts[0] == "GET":
-        transmit(STATUS_OK, sock)
-        transmit(CAT, sock)
-    else:
+    if len(parts) <= 1 or parts[0] != "GET":
         log.info("Unhandled request: {}".format(request))
         transmit(STATUS_NOT_IMPLEMENTED, sock)
         transmit("\nI don't handle this request: {}\n".format(request), sock)
+
+    elif (".." in request) or ('~' in request):
+        log.info(f"Forbidden character found in {request}")
+        transmit(STATUS_FORBIDDEN, sock)
+        transmit("\n403 Forbidden :(\nthat was a character I didn't like\n", sock)
+
+    else:
+        try:
+            clean_filename = parts[1][1:]
+            with open(clean_filename, "r") as open_file:
+                transmit(STATUS_OK, sock)
+                transmit(open_file.read(), sock)
+
+        except (FileNotFoundError, IsADirectoryError):
+            log.info(f"File {parts[1]} not found in {os.getcwd()}")
+            transmit(STATUS_NOT_FOUND, sock)
+            transmit("\n404 Not Found :(\nI didn't find that\n", sock)
 
     sock.shutdown(socket.SHUT_RDWR)
     sock.close()
@@ -138,6 +153,9 @@ def get_options():
 def main():
     options = get_options()
     port = options.PORT
+    log.info(f"Moving to {options.DOCROOT}")
+    os.chdir(options.DOCROOT)
+    log.info(f"Looking in {os.getcwd()}")
     if options.DEBUG:
         log.setLevel(logging.DEBUG)
     sock = listen(port)
