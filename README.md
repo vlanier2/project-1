@@ -1,40 +1,57 @@
 # UOCIS322 - Project 1 #
 
-This project will get you started with creating a simple webpage server.
+NAME: Vincent Lanier
 
-## Getting started
+CONTACT: vlanier@uoregon.edu
 
-Directory structure:
+# Project description
 
-* the "pages" (HTML files and their assets) will be located in DOCROOT. For this project that location is the `pages/` directory. Make sure you specify this in your `credentials.ini`!
+This project implements a simple webserver using the
+python socket package. For now, the server responds
+only to GET requests.
 
-* Everything that's located in `pageserver/`. That consists of a Python application (`pageserver.py`) that starts listening at a specified port and handles requests. This is the key file you'll be editing for this project.
+## Setup
 
-* There's a configuration parser, much like the one seen in [project-0](https://github.com/UO-CIS322/project-0), but a more detailed version. It not only looks for your `credentials.ini` file, both in `pageserver/` and the parent directory and falls back to `default.ini` if missing, it also allows you to override those settings through CLI. These will be discussed in the lab.
+credentials-skel.ini should be replaced by a credentials.ini
+file specifying the port, folder path, and logging level.
+If no credentials file is provided, it defaults to port 5000
+and ./pages.
 
-* `Makefile` here refers to the two scripts provided: `start.sh` and `stop.sh`. The former starts the server, by calling `pageserver.py`. It will also store its PID (process id), in order to kill it later through `stop.sh`. However, if you notice that it failed to do so, you can kill it manually by looking up the PID.
+Start the server with 
+```
+make start
+```
 
-## Tasks
+## Usage
 
-The goal of this project is to implement a "file checking" logic for the existing server. Currently, if you set it up and start the server, it will just serve a page with a cat figure. What is expected is for the server to handle the requests as follows:
+The server will serve files contained in DOCROOT. The server
+will respond with "401 not implemented" to any requests other 
+than GET. "403 Forbidden" is sent for disallowed characters
+and "404 not found" is sent if the requested file is not located
+in DOCROOT.
 
-* If a file exists in `pages/` (i.e. `trivia.html`, any name, any extention or format) exists, transmit `200 OK` header followed by that file. If the file doesn't exist, transmit `404 Not Found` error code in the header along with a message in the body explaining further. If a request includes illegal characters (`..` or `~`), the response should be a `403 Forbidden` error, again with a message in the body explaining it.
+A sample docroot is provided (./pages).
 
-* Update `README` with your name, info, and a brief description of the project.
+### Example
+```
+Request:
+curl -X GET "localhost:5000/trivia.css"
 
-* You will submit your credentials.ini in Canvas. It should include your name and repo URL.
+Response:
+/*
+ * Trivial style sheet for a trivial page
+ */
 
+body { background-color: rgb(200,255,200); }
+p { color:  rgb(200,0,0); }
+```
 
-## Grading Rubric
+## Shutting Down
 
-* If everything works as expected, 100 will be assigned.
-* If existing pages and files are NOT handled correctly, 30 points will be docked.
-* For each of the errors not handled correctly (403, and 404), 15 points will be docked.
-* If `README.md` is not updated with your name and info, 10 points will be docked.
-* If `credentials.ini` is commited, 10 points will be docked.
-* If the repo clones, but `make install` or `make run` throws an error, 10 will be assigned.
-* If `credentials.ini` is incorrect or not submitted, 0 will be assigned.
-
-## Authors
-
-Michal Young, Ram Durairajan.
+Shut down the server with
+```
+make stop
+```
+The stop script should shut down the server process. the process
+ID is printed in case the process continues running and must
+be manually killed.
